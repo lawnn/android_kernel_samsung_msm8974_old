@@ -22,12 +22,16 @@
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
 #include "mdss_debug.h"
-#include "mdss_mdp_trace.h"
+#include <trace/mdss_mdp_trace.h>
 #include "mdss_dsi.h"
 #include "mdss_edp.h"
 
 int count_wait_for_timeout = 0;
 int get_lcd_attached(void);
+
+#ifdef CONFIG_MACH_LGE
+#include <mach/board_lge.h>
+#endif
 
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
