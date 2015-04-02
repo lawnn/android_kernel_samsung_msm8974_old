@@ -4889,4 +4889,12 @@ config SEC_SMART_MGR_RUNQUEUE_AVG
 	bool "Samsung added for read current run queue"
 	help
 	  Support for Smart MGR function.
+config MSM_HOTPLUG
+	bool "MSM hotplug driver"
+	depends on HOTPLUG_CPU
+	default y
+	help
+	  The MSM hotplug driver controls on-/offlining of additional cores based
+	  on current cpu load.
+
 endif
