@@ -12,7 +12,7 @@ clear
 TARGET_DEVICE=SC02F
 KERNEL_DEFCONFIG="msm8974_sec_js01lte_dcm_defconfig"
 AK2_BRANCH="sc02f"
-TOOLCHAIN_VER=arm-eabi-4.8
+TOOLCHAIN_VER=arm-eabi-4.9
 
 # Resources
 THREAD="-j$(grep -c ^processor /proc/cpuinfo)"
