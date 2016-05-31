@@ -56,7 +56,7 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_splash_logo.h"
 #include "mdss_debug.h"
-#include "mdss_mdp_trace.h"
+#include <trace/mdss_mdp_trace.h>
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
