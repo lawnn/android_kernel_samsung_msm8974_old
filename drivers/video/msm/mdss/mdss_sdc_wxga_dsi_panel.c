@@ -540,7 +540,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-	
+
 	pr_err("%s:@@@@@@@@@@@@@@@@@@@ bklt_ctrl:%d :bl_level=%d\n", __func__,ctrl_pdata->bklt_ctrl,bl_level);
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
@@ -987,7 +987,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	int rc, i, len;
 	const char *data;
 	static const char *pdest;
-	static const char *on_cmds_state, *off_cmds_state;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-width", &tmp);
 	if (rc) {
@@ -1042,7 +1041,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		pinfo->mipi.dst_format =
 			DSI_VIDEO_DST_FORMAT_RGB888;
 	}
-	
+
 	pdest = of_get_property(np,
 			"qcom,mdss-dsi-panel-destination", NULL);
 	if (strlen(pdest) != 9) {
@@ -1094,7 +1093,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 /*			rc = of_property_read_u32(np,
 				"qcom,mdss-dsi-bl-pmic-pwm-frequency", &tmp);
 			if (rc) {
-				pr_err("%s:%d, Error, panel pwm_period\n",		
+				pr_err("%s:%d, Error, panel pwm_period\n",
 					__func__, __LINE__);
 			return -EINVAL;
 			}
@@ -1125,7 +1124,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
 	pinfo->mipi.interleave_mode = (!rc ? tmp : 0);
- 
+
 	pinfo->mipi.vsync_enable = of_property_read_bool(np,
 		"qcom,mdss-dsi-te-check-enable");
 	pinfo->mipi.hw_vsync_mode = of_property_read_bool(np,
@@ -1174,7 +1173,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-color-order", &tmp);
 	pinfo->mipi.rgb_swap = (!rc ? tmp : DSI_RGB_SWAP_RGB);
-	
+
 	rc = of_property_read_u32(np, "qcom,mdss-force-clk-lane-hs", &tmp);
 	pinfo->mipi.force_clk_lane_hs = (!rc ? tmp : 0);
 
@@ -1273,29 +1272,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-on-command", "qcom,mdss-dsi-on-command-state");
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
-
-	on_cmds_state = of_get_property(np,
-				"qcom,mdss-dsi-on-command-state", NULL);
-	if (!strncmp(on_cmds_state, "dsi_lp_mode", 11)) {
-		ctrl_pdata->dsi_on_state = DSI_LP_MODE;
-	} else if (!strncmp(on_cmds_state, "dsi_hs_mode", 11)) {
-		ctrl_pdata->dsi_on_state = DSI_HS_MODE;
-	} else {
-		pr_debug("%s: ON cmds state not specified. Set Default\n",
-							__func__);
-		ctrl_pdata->dsi_on_state = DSI_LP_MODE;
-	}
-
-	off_cmds_state = of_get_property(np, "qcom,mdss-dsi-off-command-state", NULL);
-	if (!strncmp(off_cmds_state, "dsi_lp_mode", 11)) {
-		ctrl_pdata->dsi_off_state = DSI_LP_MODE;
-	} else if (!strncmp(off_cmds_state, "dsi_hs_mode", 11)) {
-		ctrl_pdata->dsi_off_state = DSI_HS_MODE;
-	} else {
-		pr_debug("%s: ON cmds state not specified. Set Default\n",
-							__func__);
-		ctrl_pdata->dsi_off_state = DSI_LP_MODE;
-	}
 
 	return 0;
 error:
@@ -1569,7 +1545,7 @@ static void err_fg_work_func(struct work_struct *work)
 	}
 #if !defined(CONFIG_MACH_DEGASLTE_SPR)
 	ctrl_pdata->event_handler(MDSS_EVENT_BACKLIGHT_LATE_ON);
-#endif 
+#endif
 	disable_irq_nosync(err_fg_gpio);
 	enable_irq(err_fg_gpio);
 	mdelay(20);
