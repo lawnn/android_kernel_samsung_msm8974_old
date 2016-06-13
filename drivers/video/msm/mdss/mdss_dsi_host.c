@@ -1313,8 +1313,6 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 	struct mdss_panel_data *pdata;
 
-	pdata = &ctrl->panel_data;
-
 #ifdef DEBUG_CMD
 	int i;
 	bp = tp->data;
@@ -1325,6 +1323,8 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	pr_info("\n");
 #endif
+
+	pdata = &ctrl->panel_data;
 	bp = tp->data;
 
 	len = ALIGN(tp->len, 4);
@@ -1671,6 +1671,9 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	rc = mdss_iommu_ctrl(1);
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("IOMMU attach failed\n");
+		mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
+		mdss_bus_scale_set_quota(MDSS_HW_DSI0, 0, 0);
+		mdss_bus_bandwidth_ctrl(0);
 		mutex_unlock(&ctrl->cmd_mutex);
 		return rc;
 	}

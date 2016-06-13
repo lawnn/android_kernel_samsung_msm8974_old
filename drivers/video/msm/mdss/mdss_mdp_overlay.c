@@ -275,8 +275,8 @@ int mdss_mdp_overlay_req_check(struct msm_fb_data_type *mfd,
 			dst_h = req->dst_rect.h;
 		}
 
-		src_w = req->src_rect.w >> req->horz_deci;
-		src_h = req->src_rect.h >> req->vert_deci;
+		src_w = DECIMATED_DIMENSION(req->src_rect.w, req->horz_deci);
+		src_h = DECIMATED_DIMENSION(req->src_rect.h, req->vert_deci);
 
 		if (src_w > MAX_MIXER_WIDTH) {
 			pr_err("invalid source width=%d HDec=%d\n",
@@ -389,8 +389,8 @@ static int __mdss_mdp_validate_pxl_extn(struct mdss_mdp_pipe *pipe)
 		u32 hor_req_pixels, hor_fetch_pixels;
 		u32 hor_ov_fetch, vert_ov_fetch;
 		u32 vert_req_pixels, vert_fetch_pixels;
-		u32 src_w = pipe->src.w >> pipe->horz_deci;
-		u32 src_h = pipe->src.h >> pipe->vert_deci;
+		u32 src_w = DECIMATED_DIMENSION(pipe->src.w, pipe->horz_deci);
+		u32 src_h = DECIMATED_DIMENSION(pipe->src.h, pipe->vert_deci);
 
 		/*
 		 * plane 1 and 2 are for chroma and are same. While configuring
@@ -402,14 +402,16 @@ static int __mdss_mdp_validate_pxl_extn(struct mdss_mdp_pipe *pipe)
 
 		/*
 		 * For chroma plane, width is half for the following sub sampled
-		 * formats
+		 * formats. Except in case of decimation, where hardware avoids
+		 * 1 line of decimation instead of downsampling.
 		 */
-		if (plane == 1 &&
+		if (plane == 1 && !pipe->horz_deci &&
 		    ((pipe->src_fmt->chroma_sample == MDSS_MDP_CHROMA_420) ||
-		     (pipe->src_fmt->chroma_sample == MDSS_MDP_CHROMA_H2V1)))
+		     (pipe->src_fmt->chroma_sample == MDSS_MDP_CHROMA_H2V1))) {
 			src_w >>= 1;
-
-		if (plane == 1 &&
+			 }
+			 
+		if (plane == 1 && !pipe->vert_deci &&
 		    ((pipe->src_fmt->chroma_sample == MDSS_MDP_CHROMA_420) ||
 		     (pipe->src_fmt->chroma_sample == MDSS_MDP_CHROMA_H1V2)))
 			src_h >>= 1;
@@ -419,32 +421,37 @@ static int __mdss_mdp_validate_pxl_extn(struct mdss_mdp_pipe *pipe)
 			pipe->scale.num_ext_pxls_right[plane];
 
 		hor_fetch_pixels = src_w +
-			pipe->scale.left_ftch[plane] +
+			(pipe->scale.left_ftch[plane] >> pipe->horz_deci) +
 			pipe->scale.left_rpt[plane] +
-			pipe->scale.right_ftch[plane] +
+			(pipe->scale.right_ftch[plane] >> pipe->horz_deci) +
 			pipe->scale.right_rpt[plane];
 
-		hor_ov_fetch = src_w + pipe->scale.left_ftch[plane] +
-			pipe->scale.right_ftch[plane];
+		hor_ov_fetch = src_w +
+			(pipe->scale.left_ftch[plane] >> pipe->horz_deci)+
+			(pipe->scale.right_ftch[plane] >> pipe->horz_deci);
 
 		vert_req_pixels = pipe->scale.num_ext_pxls_top[plane] +
 			pipe->scale.num_ext_pxls_btm[plane];
 
-		vert_fetch_pixels = pipe->scale.top_ftch[plane] +
+		vert_fetch_pixels = (pipe->scale.top_ftch[plane] >> pipe->vert_deci) +
 			pipe->scale.top_rpt[plane] +
-			pipe->scale.btm_ftch[plane] +
+			(pipe->scale.btm_ftch[plane] >> pipe->vert_deci)+
 			pipe->scale.btm_rpt[plane];
 
-		vert_ov_fetch = src_h + pipe->scale.top_ftch[plane] +
-			pipe->scale.btm_ftch[plane];
+		vert_ov_fetch = src_h +
+			(pipe->scale.top_ftch[plane] >> pipe->vert_deci)+
+			(pipe->scale.btm_ftch[plane] >> pipe->vert_deci);
 
 		if ((hor_req_pixels != hor_fetch_pixels) ||
 			(hor_ov_fetch > pipe->img_width) ||
 			(vert_req_pixels != vert_fetch_pixels) ||
 			(vert_ov_fetch > pipe->img_height)) {
-			pr_err("err: h_req:%d h_fetch:%d v_req:%d v_fetch:%d src_img:[%d,%d]\n",
+			pr_err("err: plane=%d h_req:%d h_fetch:%d v_req:%d v_fetch:%d\n",
+					plane,
 					hor_req_pixels, hor_fetch_pixels,
-					vert_req_pixels, vert_fetch_pixels,
+					vert_req_pixels, vert_fetch_pixels);
+			pr_err("roi_w[%d]=%d, src_img:[%d, %d]\n",
+					plane, pipe->scale.roi_w[plane],
 					pipe->img_width, pipe->img_height);
 			pipe->scale.enable_pxl_ext = 0;
 			return -EINVAL;
@@ -459,7 +466,7 @@ static int __mdss_mdp_overlay_setup_scaling(struct mdss_mdp_pipe *pipe)
 	u32 src;
 	int rc;
 
-	src = pipe->src.w >> pipe->horz_deci;
+	src = DECIMATED_DIMENSION(pipe->src.w, pipe->horz_deci);
 
 	if (pipe->scale.enable_pxl_ext) {
 		rc = __mdss_mdp_validate_pxl_extn(pipe);
@@ -478,7 +485,7 @@ static int __mdss_mdp_overlay_setup_scaling(struct mdss_mdp_pipe *pipe)
 		return rc;
 	}
 
-	src = pipe->src.h >> pipe->vert_deci;
+	src = DECIMATED_DIMENSION(pipe->src.h, pipe->vert_deci);
 	rc = mdss_mdp_calc_phase_step(src, pipe->dst.h,
 			&pipe->scale.phase_step_y[0]);
 
@@ -1323,6 +1330,17 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	}
 
 	mutex_lock(&mdp5_data->ov_lock);
+	if (mfd->panel_info->type == DTV_PANEL) {
+		ret = mdss_mdp_overlay_start(mfd);
+		if (ret) {
+			pr_err("unable to start overlay %d (%d)\n",
+						mfd->index, ret);
+			mutex_unlock(&mdp5_data->ov_lock);
+			if (ctl->shared_lock)
+				mutex_unlock(ctl->shared_lock);
+			return ret;
+		}
+	}
 	mutex_lock(&mdp5_data->list_lock);
 
 	/*
@@ -1857,7 +1875,7 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 		return;
 
 	if (!fbi->fix.smem_start || fbi->fix.smem_len == 0 ||
-	     mdp5_data->borderfill_enable) {
+			mdp5_data->borderfill_enable) {
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 		return;
 	}
@@ -1873,12 +1891,6 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 
-	ret = mdss_iommu_ctrl(1);
-	if (IS_ERR_VALUE(ret)) {
-		pr_err("IOMMU attach failed\n");
-		goto pan_display_error;
-	}
-
 	bpp = fbi->var.bits_per_pixel / 8;
 	offset = fbi->var.xoffset * bpp +
 		 fbi->var.yoffset * fbi->fix.line_length;
@@ -1892,6 +1904,12 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 	ret = mdss_mdp_overlay_start(mfd);
 	if (ret) {
 		pr_err("unable to start overlay %d (%d)\n", mfd->index, ret);
+		goto pan_display_error;
+	}
+
+	ret = mdss_iommu_ctrl(1);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("IOMMU attach failed\n");
 		goto pan_display_error;
 	}
 
@@ -2009,7 +2027,7 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 	}
 
 	pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
-#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01EUR) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) ||defined(CONFIG_SEC_ATLANTIC_PROJECT)
+#if defined(CONFIG_SEC_KS01_PROJECT) ||defined(CONFIG_SEC_ATLANTIC_PROJECT)
 #ifdef CONFIG_FB_MSM_CAMERA_CSC
 	if (csc_update != prev_csc_update) {
 		struct mdss_mdp_pipe *pipe, *next;
@@ -3297,11 +3315,7 @@ static int mdss_mdp_overlay_handoff(struct msm_fb_data_type *mfd)
 	if (rc)
 		pr_err("Failed to handoff smps\n");
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL) || (defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL) && defined(CONFIG_MACH_KS01EUR))
-	mdp5_data->handoff = false;
-#else
 	mdp5_data->handoff = true;
-#endif
 
 error:
 	if (rc && ctl) {
