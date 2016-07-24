@@ -252,8 +252,8 @@ int ping_init_sock(struct sock *sk)
 	gid_t group = current_egid();
 	gid_t range[2];
 	struct group_info *group_info;
-	int i, j, count  ;
-        int ret = 0;
+	int i, j, count;
+	int ret = 0;
 
 	if (sk->sk_family == AF_INET6)
                 inet6_sk(sk)->ipv6only = 1;
@@ -901,6 +901,7 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	/* Copy the address and add cmsg data. */
 	if (family == AF_INET) {
 		sin = (struct sockaddr_in *) msg->msg_name;
+
 		if (sin) {
 			sin->sin_family = AF_INET;
 			sin->sin_port = 0 /* skb->h.uh->source */;
@@ -916,6 +917,7 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		struct ipv6_pinfo *np = inet6_sk(sk);
 		struct ipv6hdr *ip6 = ipv6_hdr(skb);
 		sin6 = (struct sockaddr_in6 *) msg->msg_name;
+
 		if (sin6) {
 			sin6->sin6_family = AF_INET6;
 			sin6->sin6_port = 0;
@@ -927,7 +929,7 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 					*(__be32 *)ip6 & IPV6_FLOWINFO_MASK;
 
 			sin6->sin6_scope_id = ipv6_iface_scope_id(&sin6->sin6_addr,
-								  IP6CB(skb)->iif);
+					IP6CB(skb)->iif);
 		}
 
 		if (inet6_sk(sk)->rxopt.all)
