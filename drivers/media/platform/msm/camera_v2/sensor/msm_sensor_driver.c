@@ -129,6 +129,14 @@ int32_t msm_sensor_driver_probe(void *setting)
     }
 
     size = slave_info->power_setting_array.size;
+
+    /* Validate size */
+    if (size > MAX_POWER_CONFIG) {
+        pr_err("failed: invalid number of power_up_setting %d\n", size);
+        rc = -EINVAL;
+        goto FREE_SLAVE_INFO;
+    }
+
     /* Allocate memory for power setting */
     power_setting = kzalloc(sizeof(*power_setting) * size, GFP_KERNEL);
     if (!power_setting) {
@@ -153,6 +161,14 @@ int32_t msm_sensor_driver_probe(void *setting)
     }
 
     off_size = slave_info->power_setting_array.off_size;
+
+    /* Validate off_size */
+    if (off_size > MAX_POWER_CONFIG) {
+        pr_err("failed: invalid size_down %d", off_size);
+        rc = -EINVAL;
+        goto FREE_POWER_SETTING;
+    }
+
     if (off_size > 0) {
         /* Allocate memory for power setting */
         power_off_setting = kzalloc(sizeof(*power_off_setting) * off_size, GFP_KERNEL);

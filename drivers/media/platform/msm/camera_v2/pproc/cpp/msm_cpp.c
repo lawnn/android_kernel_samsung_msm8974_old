@@ -162,7 +162,8 @@ static struct msm_cam_clk_info cpp_clk_info[] = {
 	{"cpp_bus_clk", -1},
 	{"micro_iface_clk", -1},
 };
-static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev);
+static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
+	uint32_t buff_mgr_ops);
 static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin);
 void cpp_timer_callback(unsigned long data);
 
@@ -630,7 +631,8 @@ void msm_cpp_do_tasklet(unsigned long data)
 					cpp_timers[del_timer_idx].data.processed_frame = NULL;
 					del_timer_idx = 1 - del_timer_idx;
 					cpp_dev->timeout_trial_cnt = 0;
-					msm_cpp_notify_frame_done(cpp_dev);
+					msm_cpp_notify_frame_done(cpp_dev,
+						VIDIOC_MSM_BUF_MNGR_BUF_DONE);
 				} else if (msg_id ==
 					MSM_CPP_MSG_ID_FRAME_NACK) {
 					pr_err("NACK error from hw!!\n");
@@ -640,7 +642,8 @@ void msm_cpp_do_tasklet(unsigned long data)
 					cpp_timers[del_timer_idx].data.processed_frame = NULL;
 					del_timer_idx = 1 - del_timer_idx;
 					cpp_dev->timeout_trial_cnt = 0;
-					msm_cpp_notify_frame_done(cpp_dev);
+					msm_cpp_notify_frame_done(cpp_dev,
+						VIDIOC_MSM_BUF_MNGR_PUT_BUF);
 				}
 				i += cmd_len + 2;
 			}
@@ -1109,7 +1112,8 @@ static int msm_cpp_buffer_ops(struct cpp_device *cpp_dev,
 	return rc;
 }
 
-static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev)
+static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
+	uint32_t buff_mgr_ops)
 {
 	struct v4l2_event v4l2_evt;
 	struct msm_queue_cmd *frame_qcmd;
@@ -1145,7 +1149,7 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev)
 			buff_mgr_info.index =
 				processed_frame->output_buffer_info[0].index;
 			rc = msm_cpp_buffer_ops(cpp_dev,
-				VIDIOC_MSM_BUF_MNGR_BUF_DONE,
+				buff_mgr_ops,
 				&buff_mgr_info);
 			if (rc < 0) {
 				pr_err("error putting buffer\n");
@@ -1166,7 +1170,7 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev)
 				buff_mgr_info.index =
 					processed_frame->output_buffer_info[1].index;
 			rc = msm_cpp_buffer_ops(cpp_dev,
-				VIDIOC_MSM_BUF_MNGR_BUF_DONE,
+				buff_mgr_ops,
 				&buff_mgr_info);
 			if (rc < 0) {
 				pr_err("error putting buffer\n");
